@@ -1,0 +1,28 @@
+Path to the data:
+  [original folder of the laboratory]
+Input data (raster plot): CoatingGlass_20_02_DIV19_spikesData.csv
+ROIs file: CoatingGlass_20_02_DIV19_ROI_centers_everything.csv
+
+Calibration X (difference from max to min X in ROIs, mm): 4.7
+Calibration Y (difference from max to min Y in ROIs, mm): 2.7
+Grid X: 15
+Grid Y: 15
+Invert axis: false
+Rotate ROIs?: false
+Rotation angle: 4
+Show non-active or absent ROIs as grey?: true
+Brightness of grey level (0 is black, 1 is white): 0.3
+
+Window step: 0.1
+Window size: 1
+Only firing ROIS?: true
+Burst width factor: 0.15
+Window centering: 0.6
+Activity outlayers cut: 2
+Extreme filtering?: true
+Automatic threshold?: false
+Threshold bursting: 0.2
+SNR acceptable (for automatic): 3
+Show ROIs on initiation map?: false
+Show initiation points on initiation map?: true
+Smoothness of probability density function (scales with calibration): 0.47

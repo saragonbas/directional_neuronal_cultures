@@ -1,0 +1,9 @@
+culture,label,n_valid_recordings,coincident_bursts,expected_by_chance,p_value,coupled
+15_05_1,C1,9,103,8.55,0.0001,True
+15_05_2,C2,7,48,9.13,0.0001,True
+20_02,C4,5,36,1.87,0.0001,True
+20_04,C8,6,7,4.62,0.174,False
+22_05,C6,7,11,1.81,0.0001,True
+30_04_1,C7,2,5,1.57,0.0121,True
+30_04_2,C3,3,45,4.45,0.0001,True
+30_04_3,C5,3,33,2.23,0.0001,True
