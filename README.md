@@ -54,10 +54,9 @@ Every plot and number of the article is produced here, except drawings and micro
   (DIV 14–24) and a binomial test per culture.
 - **7 – Example culture.** Same analysis for one recording; initiation site = centroid of the
   first 20% of ROIs to fire in the origin chamber.
-- **8 – Topology.** Reads `software_outputs/GTE`. GTE was computed on the whole recording (33 ms
-  bins, Markov order 2, instant feedback) after removing repeated spikes of the same ROI within
-  1 s; connections with z >= 2 were kept. Networks with < 100 active nodes or < 80% of them
-  connected are excluded.
+- **8 – Topology.** Reads `software_outputs/GTE`. GTE was computed on the whole recording after
+  removing repeated spikes of the same ROI within 1 s; connections with z >= 2 were kept.
+  Networks with < 100 active nodes or < 80% of them connected are excluded.
 - **9 – Raster and GNA.** Spikes from `1_raw_data`, whole-network GNA (1 s window, threshold 0.2)
   from `software_outputs/VisualizeFront`.
 - **10 – In silico model.** All parameters are described in the notebook. `in_silico_networks.csv`
@@ -75,7 +74,11 @@ cd ../6_directionality     && python3 directionality.py
 cd ../7_example_culture    && python3 example_culture.py
 cd ../8_topology           && python3 topology.py
 cd ../9_raster_gna_example && python3 raster_gna.py
-cd ../10_in_silico         && jupyter nbconvert --to notebook --execute --inplace in_silico.ipynb   # ~10 min
+cd ../10_in_silico         && jupyter nbconvert --to notebook --execute --inplace in_silico.ipynb
 ```
 
 Figures are saved as PNG (300 dpi) and PDF. Text sizes and colours: `common/plot_style.py`.
+
+## License
+
+MIT, see `LICENSE`.

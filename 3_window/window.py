@@ -8,7 +8,7 @@ Chooses the coincidence window (delta t): the maximum time between a burst in
 one chamber and a burst in the other for the pair to be considered the same
 event propagating between chambers.
 
-The window is chosen from ALL valid recordings (step 2), before any culture is
+The window is chosen from all valid recordings (step 2), before any culture is
 selected, so that the culture selection (step 4) can use it without circularity.
 
     Input : ../2_screening/recordings.csv       list of valid recordings
@@ -41,9 +41,9 @@ sys.dont_write_bytecode = True  # do not create __pycache__ folders
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
-import bursts       # noqa: E402
-import recordings   # noqa: E402
-import plot_style   # noqa: E402   (text sizes and colours of all figures)
+import bursts
+import recordings
+import plot_style
 
 
 # =============================================================================
@@ -143,13 +143,12 @@ def compare_with_chance(observed, surrogate):
 
 
 # =============================================================================
-# 3. FIGURES (two independent figures)
-#    Text sizes and colours are set in common/plot_style.py
+# 3. FIGURES
 # =============================================================================
 
 def plot_separations(table):
     """
-    Figure 1: distribution of the time between each burst of one chamber and the
+    Fig. SF3a: distribution of the time between each burst of one chamber and the
     nearest burst of the other chamber, compared with chance.
     """
     fig, ax = plot_style.new_figure(width=8)
@@ -180,7 +179,7 @@ def plot_separations(table):
 
 def plot_captured(table):
     """
-    Figure 2: percentage of the inter-chamber propagations (excess over chance)
+    Fig. SF3b: percentage of the inter-chamber propagations (excess over chance)
     captured as a function of the coincidence window.
     """
     fig, ax = plot_style.new_figure(width=8)

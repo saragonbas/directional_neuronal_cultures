@@ -4,7 +4,7 @@
 example_culture.py   (STEP 7)
 ==================
 
-Figures of one representative culture (C1 = 15_05_1, DIV 17), made with exactly
+Figures of the example culture (C1 = 15_05_1, DIV 17), made with exactly
 the same burst detection and matching (Delta t = 1 s) as the rest of the analysis.
 
     Input : ../5_analysis_data/15_05_1/DIV17/      spikes and ROI positions
@@ -41,9 +41,9 @@ sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
-import bursts       # noqa: E402
-import recordings   # noqa: E402
-import plot_style   # noqa: E402
+import bursts
+import recordings
+import plot_style
 
 
 # =============================================================================

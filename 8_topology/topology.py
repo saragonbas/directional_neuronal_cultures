@@ -51,8 +51,8 @@ sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
-import recordings   # noqa: E402
-import plot_style   # noqa: E402
+import recordings
+import plot_style
 
 
 # =============================================================================
@@ -141,8 +141,8 @@ def read_all():
 
 def paired_t_test(a, b):
     """
-    Two-sided paired Student's t-test (same test as in 6_directionality; implemented
-    here so that scipy is not needed). Returns (t, degrees_of_freedom, p_value).
+    Two-sided paired Student's t-test (implemented here so that scipy is not needed).
+    Returns (t, degrees_of_freedom, p_value).
     """
     from math import gamma, sqrt, pi
     d = np.asarray(a, dtype=float) - np.asarray(b, dtype=float)
@@ -165,7 +165,6 @@ def paired_t_test(a, b):
 def plot_metrics(mature):
     """Q, SW and Geff of the mature networks: one dot per culture (mean of its recordings), box = quartiles."""
     plot_style.apply()
-    # Single-letter variables in italics (Q, G), multi-letter names and labels upright (SW, eff)
     panels = [("Q", "Modularity", "$Q$"), ("SW", "Small-worldness", "SW"),
               ("Geff", "Global efficiency", "$G_{\\mathrm{eff}}$")]
     fig, axes = plt.subplots(1, 3, figsize=(12.6, 6), constrained_layout=True)
@@ -219,7 +218,7 @@ def main():
               f"  {column:12s} mean = {v.mean():.2f} +- {v.std(ddof=1):.2f}")
     plot_metrics(per_culture)
 
-    # --- Connections between chambers in each direction (per culture, ALL valid networks) ---
+    # --- Connections between chambers in each direction (per culture, all valid networks) ---
     # The question (is there an asymmetry in the GTE connections?) does not depend on
     # maturation, so all valid recordings are used: the 7 cultures enter the test.
     cross = valid.groupby("culture")[["S_to_T", "T_to_S"]].sum().reset_index()

@@ -26,7 +26,7 @@ Measures (for every recording, Delta t = 1 s)
 
 Statistical unit
 ----------------
-The CULTURE is the statistical unit: counts are summed over all recordings of a
+The culture is the statistical unit: counts are summed over all recordings of a
 culture, so that a culture with many recordings does not dominate.
 Within each culture, S->T vs T->S is compared with an exact two-sided binomial test.
 The recruitment score (4 mature cultures) and the time course are descriptive.
@@ -46,9 +46,9 @@ sys.dont_write_bytecode = True  # do not create __pycache__ folders
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
-import bursts       # noqa: E402
-import recordings   # noqa: E402
-import plot_style   # noqa: E402   (text sizes and colours of all figures)
+import bursts
+import recordings
+import plot_style
 
 
 # =============================================================================
@@ -62,7 +62,7 @@ COINCIDENCE_WINDOW = 1.0
 # Note: the last stage (DIV 18-24) contains only 2 cultures.
 STAGES = [(5, 8), (10, 12), (14, 17), (18, 24)]
 
-# Culture labels (C1-C7) are defined in common/recordings.py.
+# Culture labels (C1-C8) are defined in common/recordings.py.
 CULTURE_LABELS = recordings.CULTURE_LABELS
 
 # The recruitment score is computed in mature cultures, i.e. the last two stages of
@@ -157,7 +157,7 @@ def stars(p):
 
 
 # =============================================================================
-# 4. FIGURES  (text sizes and colours: common/plot_style.py)
+# 4. FIGURES
 # =============================================================================
 
 def plot_propagations_per_culture(per_culture):
@@ -238,17 +238,15 @@ def plot_time_course(per_stage):
     ax.axhline(0, color="0.5", ls="--", lw=1.5, zorder=0)
 
     # --- Individual cultures: grey dots, at the same position as the mean ---
-    offset = 0.0
     for xi, stage in zip(x, stages):
         values = table[stage].dropna()
-        ax.plot(np.full(len(values), xi - offset), values, "o", color=plot_style.CULTURE_COLOUR, ms=8, zorder=1)
+        ax.plot(np.full(len(values), xi), values, "o", color=plot_style.CULTURE_COLOUR, ms=8, zorder=1)
 
     # --- Mean and standard error over cultures ---
     mean = table.mean(axis=0)
     sem = table.std(axis=0, ddof=1) / np.sqrt(table.count(axis=0))
     ax.errorbar(x, mean, yerr=sem, fmt="-o", color="0.15", lw=3.5, ms=13,
                 capsize=6, capthick=2, elinewidth=2, zorder=3)
-
 
     ax.set_xticks(x)
     ax.set_xticklabels([f"{low}\u2013{high}" for low, high in STAGES])   # x-axis title says "DIV"
@@ -283,15 +281,16 @@ def main():
     per_stage = add_measures(per_recording.groupby(["culture", "stage"])[counts].sum().reset_index())
     per_stage.round(3).to_csv(os.path.join(HERE, "per_stage.csv"), index=False)
 
-    # --- Figures ---
-    plot_propagations_per_culture(per_culture)
     # --- Recruitment score in mature cultures (DIV >= MATURE_FROM_DIV) ---
     mature = per_recording[per_recording["div"] >= MATURE_FROM_DIV]
     per_culture_mature = add_measures(mature.groupby("culture")[counts].sum().reset_index())
     per_culture_mature = per_culture_mature.dropna(subset=["R_source", "R_target"])
     per_culture_mature.round(3).to_csv(os.path.join(HERE, "per_culture_mature.csv"), index=False)
     per_culture_mature.attrs["div_range"] = f"{mature['div'].min()}\u2013{mature['div'].max()}"
+
+    # --- Figures ---
     plot_recruitment(per_culture_mature)
+    plot_propagations_per_culture(per_culture)
     plot_time_course(per_stage)
 
     # --- Results reported in the article ---

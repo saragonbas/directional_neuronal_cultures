@@ -5,8 +5,7 @@ plot_style.py
 
 Common style for every figure of the project.
 
-To make the text of ALL figures bigger or smaller, change the sizes below and
-run the scripts again. Nothing else needs to be changed.
+Text sizes, figure sizes and colours used by all the scripts.
 """
 
 import matplotlib
@@ -15,17 +14,17 @@ import matplotlib.pyplot as plt
 
 
 # =============================================================================
-# TEXT SIZES (points)  <-- edit here
+# TEXT SIZES (points)
 # =============================================================================
 
 AXIS_LABEL_SIZE = 20    # axis titles ("Number of bursts", "Culture", ...)
 TICK_LABEL_SIZE = 18    # numbers / names on the axes
 LEGEND_SIZE = 17        # legend text
-ANNOTATION_SIZE = 18    # text written inside the plot (delta t, p-values, ...)
+ANNOTATION_SIZE = 18    # text written inside the plot (delta t, significance stars, ...)
 
 
 # =============================================================================
-# FIGURE SIZE (inches)  <-- edit here
+# FIGURE SIZE (inches)
 # =============================================================================
 # All figures have the same height and the same margins, so that they can be
 # placed side by side at the same height and the text has the same size in all.
@@ -36,8 +35,8 @@ MARGIN_RIGHT = 0.3
 MARGIN_BOTTOM = 1.25     # space for the x-axis title and (rotated) names
 MARGIN_TOP = 0.3
 
-# Figures of the main text (step 6) are stacked in one column: same width and
-# height, short in y. They use these values instead of FIG_HEIGHT / MARGIN_LEFT.
+# Figures of step 6 (Figs. 5e-g) have the same width and height, so that they
+# can be placed one below the other. They use these values instead of FIG_HEIGHT / MARGIN_LEFT.
 COLUMN_WIDTH = 6.5
 COLUMN_HEIGHT = 4.5
 COLUMN_MARGIN_LEFT = 1.7    # two-line y-axis titles need a bit more space
@@ -97,7 +96,7 @@ def new_column_figure():
 def save(fig, folder, name):
     """
     Save a figure as PNG (300 dpi) and PDF in `folder`.
-    The figure is NOT cropped, so all figures keep exactly the same height.
+    The figure is not cropped, so that all figures keep the same size.
     """
     import os
     for ext in ("png", "pdf"):

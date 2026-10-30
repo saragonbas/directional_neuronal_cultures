@@ -30,8 +30,8 @@ sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "common"))
-import bursts       # noqa: E402
-import recordings   # noqa: E402
+import bursts
+import recordings
 
 
 # =============================================================================
