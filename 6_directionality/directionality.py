@@ -189,7 +189,10 @@ def plot_propagations_per_culture(per_culture):
     ax.set_xlim(-0.6, len(table) - 0.4)
     ax.set_ylim(0, table["S_to_T"].max() * 1.15)
     ax.set_ylabel("Propagations")
-    ax.legend(frameon=False, loc="upper right")
+    ax.legend(frameon=False, loc="upper right", bbox_to_anchor=(1, 0.84))
+    # --- Period used (all recordings), as in the recruitment score figure ---
+    ax.text(0.5, 0.88, f"DIV {per_culture.attrs['div_range']}", transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=plot_style.ANNOTATION_SIZE)
     plot_style.save(fig, HERE, "propagations_per_culture")
 
 
@@ -275,6 +278,7 @@ def main():
                                  zip(per_culture["S_to_T"], per_culture["n_propagations"])]
     per_culture.insert(1, "label", per_culture["culture"].map(CULTURE_LABELS))
     per_culture.round(3).to_csv(os.path.join(HERE, "per_culture.csv"), index=False)
+    per_culture.attrs["div_range"] = f"{per_recording['div'].min()}\u2013{per_recording['div'].max()}"
 
     # --- Counts per culture and maturation stage ---
     per_recording["stage"] = per_recording["div"].map(stage_of)

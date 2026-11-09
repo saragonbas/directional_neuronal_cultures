@@ -38,7 +38,7 @@ import recordings
 
 # Recordings excluded after inspection, with the reason.
 MANUAL_EXCLUSIONS = {
-    "20_04_DIV7": "wrong frame rate in NETCAL (3.33 instead of 33.33 fps): spike times are incorrect",
+    "20_04_DIV7": "wrong frame rate in Netcal (3.33 instead of 33.33 fps): spike times are incorrect",
     "30_04_1_DIV11": "abnormally high activity (outlier, ~4 times the usual firing)",
 }
 

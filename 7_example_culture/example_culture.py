@@ -18,8 +18,8 @@ Event types (see 6_directionality)
 -----------
     S->T   burst of the source matched to a later burst of the target
     T->S   burst of the target matched to a later burst of the source
-    S->0   burst of the source without partner (local)
-    T->0   burst of the target without partner (local)
+    S->0   local burst of the source (no partner in the target), labelled "S local"
+    T->0   local burst of the target (no partner in the source), labelled "T local"
 
 Run:
     python3 example_culture.py      (requires numpy, pandas and matplotlib)
@@ -35,6 +35,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch, FancyArrowPatch, Circle
 from matplotlib.lines import Line2D
+from matplotlib.path import Path
 from matplotlib.colors import ListedColormap
 
 sys.dont_write_bytecode = True
@@ -56,6 +57,7 @@ SOURCE_CHAMBER = "A"         # ROIs 1-200 are the source in this culture
 COINCIDENCE_WINDOW = 1.0     # Delta t (s), chosen in step 3
 
 RASTER_TMAX = 200            # (a) seconds shown in the raster
+PANEL_HEIGHT = 8.5           # (a) and (b) have the same height (inches) to be placed side by side
 ZOOM = (305.8, 310.8)        # (b) time window of the zoom (s)
 
 # (d) physical size of the imaged field (mm) and limits of the chambers (mm, y axis)
@@ -66,7 +68,7 @@ EARLY_FRACTION = 0.2         # initiation site = centroid of the first 20% of RO
 # Colours of the event types
 COLOURS = {"S->T": plot_style.SOURCE_COLOUR, "T->S": plot_style.TARGET_COLOUR,
            "S->0": "#41b6c4", "T->0": "#fdae61"}
-LABELS = {"S->T": "S→T", "T->S": "T→S", "S->0": "S→0", "T->0": "T→0"}
+LABELS = {"S->T": "S→T", "T->S": "T→S", "S->0": "S local", "T->0": "T local"}
 
 FOLDER = os.path.join(recordings.ANALYSIS_DATA, CULTURE, f"DIV{DIV}")
 NAME = f"{CULTURE}_DIV{DIV}"
@@ -149,25 +151,34 @@ def is_source_roi(roi, data):
 # 2. FIGURES
 # =============================================================================
 
-def save(fig, name):
+def save(fig, name, tight=True):
+    # tight=False keeps the exact figure size (used for panels that must have the same height)
     for ext in ("png", "pdf"):
-        fig.savefig(os.path.join(HERE, f"{name}.{ext}"), dpi=300, bbox_inches="tight")
+        fig.savefig(os.path.join(HERE, f"{name}.{ext}"), dpi=300, bbox_inches="tight" if tight else None)
     plt.close(fig)
 
 
 def plot_raster(data, events):
     """(a) Raster of the first RASTER_TMAX s, events shaded by type, and chamber GNA."""
     plot_style.apply()
-    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(10, 8.5), height_ratios=[3.1, 1.2],
+    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(10, PANEL_HEIGHT), height_ratios=[3.1, 1.2],
                                      sharex=True, constrained_layout=True)
     ids, times = data["neuron_ids"], data["times"]
 
     # --- Events (shaded, slightly widened so that short events are visible) ---
+    # Propagations cover both chambers; local bursts only the ROIs of their own chamber.
+    split = bursts.CHAMBER_SPLIT + 0.5
+    low_is_origin = {"S": data["source_is_low"], "T": not data["source_is_low"]}
     for e in events:
         if e["start"] > RASTER_TMAX:
             continue
         centre, width = (e["start"] + e["end"]) / 2, (e["end"] - e["start"]) + 1.0
-        ax_r.axvspan(centre - width / 2, centre + width / 2, color=COLOURS[e["type"]], alpha=0.6, lw=0)
+        x = [centre - width / 2, centre + width / 2]
+        if e["type"] in ("S->0", "T->0"):
+            y0, y1 = (0, split) if low_is_origin[e["origin"]] else (split, 400)
+        else:
+            y0, y1 = 0, 400
+        ax_r.fill_between(x, y0, y1, color=COLOURS[e["type"]], alpha=0.6, lw=0)
 
     # --- Raster ---
     m = times <= RASTER_TMAX
@@ -190,15 +201,15 @@ def plot_raster(data, events):
     ax_g.set_ylabel("GNA", fontsize=plot_style.AXIS_LABEL_SIZE + 3)
     ax_g.set_xlabel("Time (s)", fontsize=plot_style.AXIS_LABEL_SIZE + 3)
     ax_g.tick_params(labelsize=plot_style.TICK_LABEL_SIZE + 2)
-    save(fig, "example_raster")
+    save(fig, "example_raster", tight=False)
 
 
 def plot_zoom(data, events):
     """(b) Zoom on one source->target propagation, with the delay between GNA peaks."""
     plot_style.apply()
     t0, t1 = ZOOM
-    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(4.3, 9.0), height_ratios=[3, 1.3],
-                                     sharex=True, gridspec_kw=dict(hspace=0.10))
+    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(4.3, PANEL_HEIGHT), height_ratios=[3.1, 1.2],
+                                     sharex=True, constrained_layout=True)
     ids, times = data["neuron_ids"], data["times"]
     m = (times >= t0) & (times <= t1)
     src = np.array([is_source_roi(i, data) for i in ids])
@@ -213,6 +224,11 @@ def plot_zoom(data, events):
     ax_r.set_yticks(range(0, 401, 100))
     ax_r.set_ylabel("ROI", fontsize=plot_style.AXIS_LABEL_SIZE + 4)
     ax_r.tick_params(labelsize=plot_style.TICK_LABEL_SIZE + 2)
+    # Legend above the raster, as in (a), so that the axes of both panels are aligned
+    ax_r.legend(handles=[Patch(facecolor=plot_style.SOURCE_COLOUR, label="Source"),
+                         Patch(facecolor=plot_style.TARGET_COLOUR, label="Target")],
+                loc="lower center", bbox_to_anchor=(0.5, 1.01), ncol=2, frameon=False,
+                fontsize=plot_style.LEGEND_SIZE + 3, handlelength=1.5, columnspacing=1.6)
 
     # --- GNA of each chamber and delay between peaks ---
     c = data["centres"]
@@ -234,7 +250,7 @@ def plot_zoom(data, events):
     ax_g.set_ylabel("GNA", fontsize=plot_style.AXIS_LABEL_SIZE + 4)
     ax_g.set_xlabel("Time (s)", fontsize=plot_style.AXIS_LABEL_SIZE + 4)
     ax_g.tick_params(labelsize=plot_style.TICK_LABEL_SIZE + 2)
-    save(fig, "example_zoom")
+    save(fig, "example_zoom", tight=False)
 
     # --- Check that the zoomed burst is a S->T propagation ---
     kind = [e["type"] for e in events if e["start"] <= t0 + s_peak + 0.5 and e["end"] >= t0 + s_peak - 0.5]
@@ -242,42 +258,61 @@ def plot_zoom(data, events):
 
 
 def plot_state_diagram(events):
-    """(c) Burst state diagram: arrow width proportional to the number of events."""
+    """(c) Burst state diagram: arrow width proportional to the number of events.
+    Local bursts (S->0, T->0) are drawn as a loop that leaves and re-enters their own chamber."""
     plot_style.apply()
     n = {k: sum(e["type"] == k for e in events) for k in COLOURS}
     n_max = max(n.values())
-    fig, ax = plt.subplots(figsize=(5, 4.6))
+    x_range, y_range, inches_per_unit = 2.7, 2.6, 1.5      # nearly square panel
+    fig = plt.figure(figsize=(x_range * inches_per_unit, y_range * inches_per_unit))
+    ax = fig.add_axes([0, 0, 1, 1])
     ax.axis("off")
-    ax.set_xlim(-1.5, 3.2)
-    ax.set_ylim(-1.9, 2.1)
+    ax.set_xlim(-x_range / 2, x_range / 2)
+    ax.set_ylim(-y_range / 2, y_range / 2)
     ax.set_aspect("equal")
-    pos = {"S": (0, 1.25), "T": (0, -1.25), "0": (2.1, 0)}
-    node_colour = {"S": plot_style.SOURCE_COLOUR, "T": plot_style.TARGET_COLOUR, "0": "#9aa0a6"}
+    points_per_unit = 72 * inches_per_unit
+    pos = {"S": np.array([0.0, 0.8]), "T": np.array([0.0, -0.8])}
+    node_colour = {"S": plot_style.SOURCE_COLOUR, "T": plot_style.TARGET_COLOUR}
     radius = 0.34
 
-    def arrow(a, b, count, colour, rad):
-        pa, pb = np.array(pos[a], float), np.array(pos[b], float)
-        ax.add_patch(FancyArrowPatch(pa, pb, connectionstyle=f"arc3,rad={rad}", arrowstyle="-|>",
-                                     mutation_scale=15, lw=1.2 + 5.0 * count / n_max, color=colour,
-                                     shrinkA=radius * 72 / 1.4, shrinkB=radius * 72 / 1.4,
-                                     alpha=0.9, zorder=2))
-        d = pb - pa
-        perp = np.array([d[1], -d[0]]) / np.hypot(*d)
-        mid = (pa + pb) / 2 + perp * rad * np.hypot(*d) * 0.6
-        ax.text(*mid, str(count), color=colour, fontsize=plot_style.ANNOTATION_SIZE, weight="bold",
+    def width(count):
+        return 1.2 + 5.0 * count / n_max
+
+    def label(xy, count, colour):
+        ax.text(*xy, str(count), color=colour, fontsize=plot_style.ANNOTATION_SIZE, weight="bold",
                 ha="center", va="center", zorder=5,
                 bbox=dict(boxstyle="circle,pad=0.12", fc="white", ec="none"))
 
+    def arrow(a, b, count, colour, rad):
+        pa, pb = pos[a], pos[b]
+        ax.add_patch(FancyArrowPatch(pa, pb, connectionstyle=f"arc3,rad={rad}", arrowstyle="-|>",
+                                     mutation_scale=15, lw=width(count), color=colour,
+                                     shrinkA=radius * points_per_unit, shrinkB=radius * points_per_unit,
+                                     alpha=0.9, zorder=2))
+        d = pb - pa
+        perp = np.array([d[1], -d[0]]) / np.hypot(*d)
+        label((pa + pb) / 2 + perp * rad * np.hypot(*d) * 0.6, count, colour)
+
+    def loop(a, count, colour, direction):
+        # Cubic Bezier curve leaving the circle and coming back to it on the outer side
+        centre, reach = pos[a], 0.8
+        angles = np.radians([direction + 35, direction - 35])
+        unit = [np.array([np.cos(t), np.sin(t)]) for t in angles]
+        p1, p2 = centre + radius * unit[0], centre + radius * unit[1]
+        c1, c2 = p1 + reach * unit[0], p2 + reach * unit[1]
+        path = Path([p1, c1, c2, p2], [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4])
+        ax.add_patch(FancyArrowPatch(path=path, arrowstyle="-|>", mutation_scale=15, lw=width(count),
+                                     color=colour, alpha=0.9, zorder=2))
+        label((p1 + 3 * c1 + 3 * c2 + p2) / 8, count, colour)
+
     arrow("S", "T", n["S->T"], COLOURS["S->T"], -0.30)
     arrow("T", "S", n["T->S"], COLOURS["T->S"], -0.30)
-    arrow("S", "0", n["S->0"], COLOURS["S->0"], 0.18)
-    arrow("T", "0", n["T->0"], COLOURS["T->0"], -0.18)
+    loop("S", n["S->0"], COLOURS["S->0"], 180)
+    loop("T", n["T->0"], COLOURS["T->0"], 0)
     for k, (x, y) in pos.items():
         ax.add_patch(Circle((x, y), radius, fc=node_colour[k], ec="white", lw=2, zorder=3))
         ax.text(x, y, k, ha="center", va="center", color="white", fontsize=plot_style.ANNOTATION_SIZE + 2,
                 weight="bold", zorder=4)
-    ax.text(-1.45, 2.05, "S = source   T = target   0 = no propagation",
-            fontsize=plot_style.LEGEND_SIZE - 5, va="top", color="0.3")
     save(fig, "example_state_diagram")
     return n
 

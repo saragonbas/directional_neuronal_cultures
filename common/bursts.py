@@ -17,6 +17,8 @@ Chamber definition
 The 400 ROIs are split by index into the two chambers of the device:
     chamber A = ROIs 1-200
     chamber B = ROIs 201-400
+
+In the code, each ROI is called a "neuron".
 """
 
 import numpy as np
@@ -55,7 +57,7 @@ SMOOTHING_WIDTH = 0.10
 
 def load_spikes(path):
     """
-    Read a NETCAL spikesData.csv file.
+    Read a spikesData.csv file (exported from Netcal).
 
     Returns
     -------

@@ -7,7 +7,7 @@ raster_gna.py   (STEP 9)
 Figure 2b of the article: raster plot of one recording and its global network
 activity (GNA), with the burst-detection threshold and one inter-burst interval (IBI).
 
-    Input : ../1_raw_data/15_05_1/DIV21/15_05_1_DIV21_spikesData.csv          spikes (NETCAL)
+    Input : ../1_raw_data/15_05_1/DIV21/15_05_1_DIV21_spikesData.csv          spikes (Netcal)
             ../software_outputs/VisualizeFront/15_05_1/DIV21/
                 15_05_1_DIV21_Global_activity.csv                             GNA computed by VisualizeFront
     Output: raster_gna.png / .pdf

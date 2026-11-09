@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-threshold_check.py
+threshold_check.py   (STEP 3)
 ==================
 
 Compares the chamber-specific burst threshold used in the analysis (0.1) with
