@@ -90,7 +90,7 @@ MIN_CONNECTED_FRACTION = 0.8
 MATURE = (14, 24)                 # DIV range of the mature networks (same as the recruitment score)
 
 N_RANDOM = 20                     # random networks per real network
-SWAPS_PER_LINK = 5                # rewiring steps per connection in each random network
+SWAPS_PER_CONNECTION = 5                # rewiring steps per connection in each random network
 LOUVAIN_RUNS_REAL = 5             # Louvain runs (best partition) for the real networks
 LOUVAIN_RUNS_RANDOM = 2           # Louvain runs (best partition) for each random network
 MIN_COMMUNITY_SIZE = 5            # communities counted in n_communities
@@ -113,7 +113,7 @@ def read_net_measures(path):
         "SW": float(row["SmallWorldness_SW"]),
         "Geff": float(row["Geff_TH"]),
         "clustering": float(row["Clustering_SW"]),
-        "path_length": float(row["ave_l"]),
+        "path_length": float(row["ave_L_topo"]),   # mean shortest path length (ave_l is the physical length of the connections)
     }
 
 
@@ -224,14 +224,14 @@ def global_efficiency(graph):
     is no path). Distances are found step by step: first the ROIs reached in one step,
     then in two, and so on.
     """
-    links = nx.to_numpy_array(graph, dtype=np.float32) > 0
-    n = len(links)
+    connections = nx.to_numpy_array(graph, dtype=np.float32) > 0
+    n = len(connections)
     reached = np.eye(n, dtype=bool)
     frontier = reached.copy()
     total, distance = 0.0, 0
     while frontier.any():
         distance += 1
-        frontier = ((frontier.astype(np.float32) @ links.astype(np.float32)) > 0) & ~reached
+        frontier = ((frontier.astype(np.float32) @ connections.astype(np.float32)) > 0) & ~reached
         total += frontier.sum() / distance
         reached |= frontier
     return total / (n * (n - 1))
@@ -244,13 +244,14 @@ def random_network(graph, seed):
     outgoing connections.
     """
     rewired = graph.copy()
-    links = rewired.number_of_edges()
-    nx.directed_edge_swap(rewired, nswap=SWAPS_PER_LINK * links, max_tries=200 * links, seed=seed)
+    n_connections = rewired.number_of_edges()
+    nx.directed_edge_swap(rewired, nswap=SWAPS_PER_CONNECTION * n_connections,
+                          max_tries=200 * n_connections, seed=seed)
     return rewired
 
 
 def normalized_mutual_information(a, b):
-    """NMI between two divisions of the same nodes (Danon et al. 2005)."""
+    """NMI between two partitions of the same nodes (Danon et al. 2005)."""
     _, a = np.unique(a, return_inverse=True)
     _, b = np.unique(b, return_inverse=True)
     joint = np.zeros((a.max() + 1, b.max() + 1))
@@ -282,10 +283,10 @@ def null_and_chambers(prefix):
     chamber = {n: int(ids[n] > CHAMBER_SPLIT) for n in graph}
     connected = [n for n in graph if graph.degree(n) > 0]
     community = {n: i for i, c in enumerate(communities) for n in c}
-    chamber_division = [c for c in ({n for n in graph if chamber[n] == k} for k in (0, 1)) if c]
+    chamber_partition = [c for c in ({n for n in graph if chamber[n] == k} for k in (0, 1)) if c]
     row["Q_python"] = modularity(graph, communities)          # check: same as Q of the GTE code
     row["Geff_python"] = global_efficiency(graph)              # check: same as Geff of the GTE code
-    row["Q_chambers"] = modularity(graph, chamber_division)
+    row["Q_chambers"] = modularity(graph, chamber_partition)
     n_a = sum(chamber[n] == 0 for n in graph)                  # active ROIs of each chamber
     n_b = graph.number_of_nodes() - n_a
     n = n_a + n_b
@@ -376,7 +377,7 @@ def main():
     per_culture.insert(1, "label", per_culture["culture"].map(recordings.CULTURE_LABELS))
     per_culture["n_recordings"] = mature.groupby("culture").size().to_numpy()
 
-    # --- Random networks and chamber division of every mature network ---
+    # --- Random networks and partition defined by the two chambers, for every mature network ---
     extra = pd.DataFrame([null_and_chambers(os.path.join(GTE_FOLDER, rec["culture"], f"DIV{rec['div']}",
                                                          rec["recording"]))
                           for _, rec in mature.iterrows()], index=mature.index)
@@ -399,7 +400,7 @@ def main():
           f"{(mature['Geff_python'] - mature['Geff']).abs().max():.3f}; GTE values are rounded to 0.01)")
     for column in metrics + extra_metrics:
         v = per_culture[column]
-        print(f"  {column:14s} mean = {v.mean():.2f} +- {v.std(ddof=1):.2f}"
+        print(f"  {column:14s} mean +- SD = {v.mean():.2f} +- {v.std(ddof=1):.2f}"
               + (f"   (cultures with value > 1: {(v > 1).sum()})" if column == "SW" else ""))
     plot_metrics(per_culture)
 
@@ -419,8 +420,9 @@ def main():
     print(cross.round(2).to_string(index=False))
     print(f"S->T vs T->S across cultures: two-sided paired t-test t({df}) = {t:.2f}, p = {p_t:.3f}")
     print("Reciprocity (fraction of connections i->j with j->i also present; mean +- SD across cultures):")
+    names = {"reciprocity": "reciprocity r", "reciprocity_chance": "density rho (= r expected by chance)"}
     for column in recip:
-        print(f"  {column:20s} {cross[column].mean():.2f} +- {cross[column].std(ddof=1):.2f}   "
+        print(f"  {names[column]:37s} {cross[column].mean():.2f} +- {cross[column].std(ddof=1):.2f}   "
               f"(range {cross[column].min():.2f}-{cross[column].max():.2f})")
 
 

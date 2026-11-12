@@ -18,8 +18,9 @@ selected, so that the culture selection (step 4) can use it without circularity.
 
 Procedure
 ---------
-1. For every burst of chamber A, measure the time to the nearest burst of
-   chamber B (all recordings pooled).
+1. For every burst of chamber A (top chamber, ROIs 1-200), measure the time to
+   the nearest burst of chamber B (bottom chamber, ROIs 201-400), with all
+   recordings pooled.
 2. Repeat the same measurement after randomly shifting the bursts of chamber B
    (circular time-shift, see common/bursts.py). This gives the distribution
    expected by chance.

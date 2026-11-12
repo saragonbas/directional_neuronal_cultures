@@ -6,19 +6,25 @@ bursts.py
 Shared functions used by every analysis in this project.
 
     1. load_spikes()           Read a spikesData.csv file.
-    2. detect_chamber_bursts() Detect network bursts separately in each chamber.
-       chamber_activity(), burst_segments()  Same, keeping the activity signal and
-                                 the start/end of each burst (used for figures).
+    2. detect_chamber_bursts() Detect the chamber bursts: network bursts detected
+                               separately in each chamber from its chamber GNA.
+       chamber_gna(), burst_segments()  Same, keeping the chamber GNA and the
+                                 start/end of each burst (used for figures).
     3. match_bursts()          Pair bursts of one chamber with bursts of the other.
     4. chance_matches()        Number of pairs expected by chance (surrogate data).
 
 Chamber definition
 ------------------
 The 400 ROIs are split by index into the two chambers of the device:
-    chamber A = ROIs 1-200
-    chamber B = ROIs 201-400
+    chamber A = top chamber    (ROIs 1-200)
+    chamber B = bottom chamber (ROIs 201-400)
+Which of them is the source depends on the culture (see 4_culture_selection).
 
-In the code, each ROI is called a "neuron".
+Chamber GNA
+-----------
+As the GNA of the whole culture, but computed within each chamber: fraction of
+the active ROIs of the chamber that fire within a 0.5 s window centred on each
+time step. A chamber burst is an episode in which the chamber GNA exceeds 0.1.
 """
 
 import numpy as np
@@ -32,22 +38,27 @@ import pandas as pd
 # ROIs with index <= CHAMBER_SPLIT belong to chamber A, the rest to chamber B.
 CHAMBER_SPLIT = 200
 
-# A neuron is considered "active" if it fires at least this many spikes.
+# A ROI is considered "active" if it fires at least this many spikes.
 MIN_SPIKES_ACTIVE = 2
 
-# Time resolution of the activity signal (s).
+# Time step of the chamber GNA (s).
 BIN_SIZE = 0.10
 
-# A neuron counts as co-active at time t if it fires within this window around t (s).
-COACTIVITY_WINDOW = 0.50
+# Window (s) of the chamber GNA: a ROI counts as active at time t if it fires within
+# this window centred on t.
+GNA_WINDOW = 0.50
 
-# A chamber is "bursting" when at least this fraction of its active neurons is co-active.
+# A chamber burst is detected when the chamber GNA exceeds this value
+# (fraction of the active ROIs of the chamber).
 BURST_THRESHOLD = 0.10
 
 # Two above-threshold segments closer than this (s) are merged into a single burst.
 MERGE_GAP = 0.30
 
-# Width (s) of the Gaussian used to smooth the activity signal.
+# Width (s) of the Gaussian used to smooth the chamber GNA. Without smoothing, the
+# chamber GNA changes in small steps and its maximum can fall one step earlier or
+# later by chance; smoothing places the peak at the centre of the burst, which is
+# needed to decide which chamber peaked first.
 SMOOTHING_WIDTH = 0.10
 
 
@@ -61,26 +72,27 @@ def load_spikes(path):
 
     Returns
     -------
-    neuron_ids : array of int    ROI index of each spike.
+    roi_ids    : array of int    ROI index of each spike.
     times      : array of float  Time of each spike (s).
     """
     data = pd.read_csv(path, skipinitialspace=True)
     data.columns = [c.strip().lower() for c in data.columns]
 
+    # Netcal names the ROI column "neuron" (or "index")
     id_column = [c for c in data.columns if "neuron" in c or "index" in c][0]
     time_column = [c for c in data.columns if "time" in c][0]
 
-    neuron_ids = data[id_column].to_numpy(int)
+    roi_ids = data[id_column].to_numpy(int)
     times = data[time_column].to_numpy(float)
-    return neuron_ids, times
+    return roi_ids, times
 
 
-def active_neurons_per_chamber(neuron_ids):
+def active_rois_per_chamber(roi_ids):
     """
-    Return the list of active neurons of chamber A and of chamber B.
-    A neuron is active if it fires at least MIN_SPIKES_ACTIVE spikes.
+    Return the list of active ROIs of chamber A and of chamber B.
+    A ROI is active if it fires at least MIN_SPIKES_ACTIVE spikes.
     """
-    ids, spike_counts = np.unique(neuron_ids, return_counts=True)
+    ids, spike_counts = np.unique(roi_ids, return_counts=True)
     active = ids[spike_counts >= MIN_SPIKES_ACTIVE]
 
     active_A = [n for n in active if n <= CHAMBER_SPLIT]
@@ -101,48 +113,48 @@ def _gaussian_smooth(signal, width_in_bins):
     return np.convolve(signal, kernel, mode="same")
 
 
-def _chamber_activity(neuron_ids, times, active_neurons, n_bins):
+def _chamber_gna(roi_ids, times, active_rois, n_bins):
     """
-    Activity signal of one chamber: fraction of its active neurons that fire
-    within COACTIVITY_WINDOW around each time bin (smoothed).
+    Chamber GNA: fraction of the active ROIs of one chamber that fire within
+    GNA_WINDOW around each time step (smoothed).
     """
-    n_neurons = len(active_neurons)
-    if n_neurons == 0:
+    n_rois = len(active_rois)
+    if n_rois == 0:
         return np.zeros(n_bins)
 
-    # --- Binary matrix: neuron x time bin (1 if the neuron fires in that bin) ---
-    row_of_neuron = {neuron: row for row, neuron in enumerate(active_neurons)}
-    is_active_spike = np.array([n in row_of_neuron for n in neuron_ids])
+    # --- Binary matrix: ROI x time step (1 if the ROI fires in that step) ---
+    row_of_roi = {roi: row for row, roi in enumerate(active_rois)}
+    is_active_spike = np.array([n in row_of_roi for n in roi_ids])
 
-    rows = [row_of_neuron[n] for n in neuron_ids[is_active_spike]]
+    rows = [row_of_roi[n] for n in roi_ids[is_active_spike]]
     cols = np.clip((times[is_active_spike] / BIN_SIZE).astype(int), 0, n_bins - 1)
 
-    fires = np.zeros((n_neurons, n_bins), dtype=np.float32)
+    fires = np.zeros((n_rois, n_bins), dtype=np.float32)
     fires[rows, cols] = 1.0
 
-    # --- Does each neuron fire within the co-activity window around each bin? ---
-    half_window = int(round((COACTIVITY_WINDOW / BIN_SIZE) / 2))
+    # --- Does each ROI fire within the window centred on each time step? ---
+    half_window = int(round((GNA_WINDOW / BIN_SIZE) / 2))
     cumulative = np.cumsum(fires, axis=1)
     first = np.clip(np.arange(n_bins) - half_window - 1, -1, n_bins - 1)
     last = np.clip(np.arange(n_bins) + half_window, 0, n_bins - 1)
     spikes_in_window = cumulative[:, last] - np.where(first >= 0, cumulative[:, first], 0.0)
 
-    # --- Fraction of co-active neurons, smoothed ---
-    fraction_coactive = (spikes_in_window > 0).sum(axis=0) / n_neurons
-    return _gaussian_smooth(fraction_coactive, SMOOTHING_WIDTH / BIN_SIZE)
+    # --- Fraction of active ROIs that fire in the window, smoothed ---
+    gna = (spikes_in_window > 0).sum(axis=0) / n_rois
+    return _gaussian_smooth(gna, SMOOTHING_WIDTH / BIN_SIZE)
 
 
-def burst_segments(activity, bin_edges):
+def burst_segments(gna, bin_edges):
     """
-    Detect bursts in an activity signal.
+    Detect the chamber bursts in a chamber GNA.
 
-    A burst is a segment where activity >= BURST_THRESHOLD. Segments separated
+    A burst is a segment where the chamber GNA >= BURST_THRESHOLD. Segments separated
     by less than MERGE_GAP are merged. Each burst is represented by the time at
-    which its activity is maximal (peak).
+    which its chamber GNA is maximal (peak).
 
     Returns a list of [start (s), end (s), peak time (s)], one per burst.
     """
-    above = np.where(activity >= BURST_THRESHOLD)[0]
+    above = np.where(gna >= BURST_THRESHOLD)[0]
     if len(above) == 0:
         return []
 
@@ -152,7 +164,7 @@ def burst_segments(activity, bin_edges):
     for seg in segments:
         start = bin_edges[seg[0]]
         end = bin_edges[seg[-1] + 1]
-        peak_bin = seg[np.argmax(activity[seg])]
+        peak_bin = seg[np.argmax(gna[seg])]
         bursts.append([start, end, peak_bin])
 
     # --- Merge segments that are too close to each other ---
@@ -161,7 +173,7 @@ def burst_segments(activity, bin_edges):
         previous = merged[-1]
         if start - previous[1] <= MERGE_GAP:
             previous[1] = end
-            if activity[peak_bin] > activity[previous[2]]:
+            if gna[peak_bin] > gna[previous[2]]:
                 previous[2] = peak_bin
         else:
             merged.append([start, end, peak_bin])
@@ -171,32 +183,32 @@ def burst_segments(activity, bin_edges):
     return [[float(start), float(end), float(bin_centres[peak_bin])] for start, end, peak_bin in merged]
 
 
-def _burst_peaks(activity, bin_edges):
-    """Peak time (s) of each burst of an activity signal."""
-    return [peak for _, _, peak in burst_segments(activity, bin_edges)]
+def _burst_peaks(gna, bin_edges):
+    """Peak time (s) of each burst of a chamber GNA."""
+    return [peak for _, _, peak in burst_segments(gna, bin_edges)]
 
 
-def chamber_activity(path):
+def chamber_gna(path):
     """
-    Activity signal (chamber-specific GNA) of both chambers of one recording.
+    Chamber GNA of both chambers of one recording.
 
     Returns a dictionary with:
-        neuron_ids, times   : the spikes of the recording
-        bin_edges, centres  : time bins (s)
-        activity_A/B        : activity signal of chamber A and B
+        roi_ids, times      : the spikes of the recording
+        bin_edges, centres  : time steps (s)
+        gna_A, gna_B        : chamber GNA of chamber A and B
     """
-    neuron_ids, times = load_spikes(path)
-    active_A, active_B = active_neurons_per_chamber(neuron_ids)
+    roi_ids, times = load_spikes(path)
+    active_A, active_B = active_rois_per_chamber(roi_ids)
     duration = float(times.max())
     bin_edges = np.arange(0, duration + BIN_SIZE, BIN_SIZE)
     n_bins = len(bin_edges) - 1
     return {
-        "neuron_ids": neuron_ids,
+        "roi_ids": roi_ids,
         "times": times,
         "bin_edges": bin_edges,
         "centres": 0.5 * (bin_edges[:-1] + bin_edges[1:]),
-        "activity_A": _chamber_activity(neuron_ids, times, active_A, n_bins),
-        "activity_B": _chamber_activity(neuron_ids, times, active_B, n_bins),
+        "gna_A": _chamber_gna(roi_ids, times, active_A, n_bins),
+        "gna_B": _chamber_gna(roi_ids, times, active_B, n_bins),
         "active_A": active_A,
         "active_B": active_B,
     }
@@ -204,26 +216,26 @@ def chamber_activity(path):
 
 def detect_chamber_bursts(path):
     """
-    Detect the bursts of each chamber in one recording.
+    Detect the chamber bursts of both chambers in one recording.
 
     Returns a dictionary with:
         bursts_A, bursts_B : burst peak times (s) in chamber A and B
         duration           : recording duration (s)
-        active_A, active_B : number of active neurons in each chamber
+        active_A, active_B : number of active ROIs in each chamber
     """
-    neuron_ids, times = load_spikes(path)
-    active_A, active_B = active_neurons_per_chamber(neuron_ids)
+    roi_ids, times = load_spikes(path)
+    active_A, active_B = active_rois_per_chamber(roi_ids)
 
     duration = float(times.max())
     bin_edges = np.arange(0, duration + BIN_SIZE, BIN_SIZE)
     n_bins = len(bin_edges) - 1
 
-    activity_A = _chamber_activity(neuron_ids, times, active_A, n_bins)
-    activity_B = _chamber_activity(neuron_ids, times, active_B, n_bins)
+    gna_A = _chamber_gna(roi_ids, times, active_A, n_bins)
+    gna_B = _chamber_gna(roi_ids, times, active_B, n_bins)
 
     return {
-        "bursts_A": _burst_peaks(activity_A, bin_edges),
-        "bursts_B": _burst_peaks(activity_B, bin_edges),
+        "bursts_A": _burst_peaks(gna_A, bin_edges),
+        "bursts_B": _burst_peaks(gna_B, bin_edges),
         "duration": duration,
         "active_A": len(active_A),
         "active_B": len(active_B),
@@ -240,7 +252,9 @@ def match_bursts(bursts_A, bursts_B, window):
     provided their peaks are at most `window` seconds apart.
 
     In each pair, the chamber whose burst peaks first is the one that
-    propagated the activity to the other.
+    propagated the activity to the other. If both peaks fall in the same time
+    step, the order cannot be decided and the pair is counted as simultaneous
+    (a coincident burst without direction).
 
     Returns
     -------
@@ -248,9 +262,10 @@ def match_bursts(bursts_A, bursts_B, window):
     B_to_A  : pairs in which B peaked first
     local_A : bursts of A without a partner in B
     local_B : bursts of B without a partner in A
+    simultaneous : pairs in which both chambers peaked in the same time step
     """
     used_B = set()
-    A_to_B = B_to_A = local_A = 0
+    A_to_B = B_to_A = local_A = simultaneous = 0
 
     for t_A in sorted(bursts_A):
         # --- Find the closest burst of B not yet used, within the window ---
@@ -265,13 +280,15 @@ def match_bursts(bursts_A, bursts_B, window):
             local_A += 1
         else:
             used_B.add(best)
-            if t_A <= bursts_B[best]:
+            if abs(t_A - bursts_B[best]) < 1e-9:
+                simultaneous += 1
+            elif t_A < bursts_B[best]:
                 A_to_B += 1
             else:
                 B_to_A += 1
 
     local_B = len(bursts_B) - len(used_B)
-    return A_to_B, B_to_A, local_A, local_B
+    return A_to_B, B_to_A, local_A, local_B, simultaneous
 
 
 # =============================================================================
@@ -298,7 +315,7 @@ def chance_matches(bursts_A, bursts_B, duration, window, n_repetitions, rng):
     for k in range(n_repetitions):
         offset = rng.uniform(5, duration - 5)
         shifted_B = np.sort((bursts_B + offset) % duration).tolist()
-        A_to_B, B_to_A, _, _ = match_bursts(bursts_A, shifted_B, window)
-        matches[k] = A_to_B + B_to_A
+        A_to_B, B_to_A, _, _, simultaneous = match_bursts(bursts_A, shifted_B, window)
+        matches[k] = A_to_B + B_to_A + simultaneous
 
     return matches

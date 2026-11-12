@@ -59,12 +59,12 @@ def count_for_threshold(threshold, paths):
         data = bursts.detect_chamber_bursts(path)
         A, B = data["bursts_A"], data["bursts_B"]
 
-        A_to_B, B_to_A, _, _ = bursts.match_bursts(A, B, WINDOW)
+        A_to_B, B_to_A, _, _, simultaneous = bursts.match_bursts(A, B, WINDOW)
         chance = bursts.chance_matches(A, B, data["duration"], WINDOW, N_REPETITIONS, rng)
 
         totals["bursts_A"] += len(A)
         totals["bursts_B"] += len(B)
-        totals["coincident"] += A_to_B + B_to_A
+        totals["coincident"] += A_to_B + B_to_A + simultaneous
         totals["expected_by_chance"] += float(chance.mean())
 
     totals["real_propagations"] = totals["coincident"] - totals["expected_by_chance"]

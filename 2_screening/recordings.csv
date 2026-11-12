@@ -1,4 +1,4 @@
-culture,div,recording,active_neurons_A,active_neurons_B,bursts_A,bursts_B,duration_s,valid,exclusion_reason,path
+culture,div,recording,active_ROIs_A,active_ROIs_B,bursts_A,bursts_B,duration_s,valid,exclusion_reason,path
 15_05_1,5,15_05_1_DIV5,8,10,5,8,555.5,True,,15_05_1/DIV05/15_05_1_DIV5_spikesData.csv
 15_05_1,7,15_05_1_DIV7,129,134,11,8,565.0,True,,15_05_1/DIV07/15_05_1_DIV7_spikesData.csv
 15_05_1,12,15_05_1_DIV12,190,187,15,15,591.0,True,,15_05_1/DIV12/15_05_1_DIV12_spikesData.csv
@@ -26,7 +26,7 @@ culture,div,recording,active_neurons_A,active_neurons_B,bursts_A,bursts_B,durati
 20_02,17,20_02_DIV17,24,78,9,10,566.8,True,,20_02/DIV17/20_02_DIV17_spikesData.csv
 20_02,19,20_02_DIV19,2,108,10,10,532.0,True,,20_02/DIV19/20_02_DIV19_spikesData.csv
 20_02,21,20_02_DIV21,0,74,0,16,550.9,False,no bursts in one of the chambers,20_02/DIV21/20_02_DIV21_spikesData.csv
-20_04,7,20_04_DIV7,71,104,4,23,5496.7,False,wrong frame rate in NETCAL (3.33 instead of 33.33 fps): spike times are incorrect,20_04/DIV07/20_04_DIV7_spikesData.csv
+20_04,7,20_04_DIV7,71,104,4,23,5496.7,False,wrong frame rate in Netcal (3.33 instead of 33.33 fps): spike times are incorrect,20_04/DIV07/20_04_DIV7_spikesData.csv
 20_04,10,20_04_DIV10,114,128,4,4,599.4,True,,20_04/DIV10/20_04_DIV10_spikesData.csv
 20_04,11,20_04_DIV11,71,49,5,4,439.9,True,,20_04/DIV11/20_04_DIV11_spikesData.csv
 20_04,15,20_04_DIV15,89,127,32,21,595.1,True,,20_04/DIV15/20_04_DIV15_spikesData.csv

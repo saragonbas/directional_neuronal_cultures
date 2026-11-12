@@ -51,6 +51,7 @@ ALPHA = 0.05
 
 # Source chamber of each culture (the one connected to the wide end of the
 # funnel-shaped microchannels). The other chamber is the target.
+# A = top chamber (ROIs 1-200), B = bottom chamber (ROIs 201-400).
 SOURCE_CHAMBER = {
     "20_02": "B",
     "20_04": "A",
@@ -83,8 +84,8 @@ def test_culture(paths):
         data = bursts.detect_chamber_bursts(path)
         A, B = data["bursts_A"], data["bursts_B"]
 
-        A_to_B, B_to_A, _, _ = bursts.match_bursts(A, B, COINCIDENCE_WINDOW)
-        observed += A_to_B + B_to_A
+        A_to_B, B_to_A, _, _, simultaneous = bursts.match_bursts(A, B, COINCIDENCE_WINDOW)
+        observed += A_to_B + B_to_A + simultaneous
         chance += bursts.chance_matches(A, B, data["duration"], COINCIDENCE_WINDOW, N_REPETITIONS, rng)
 
     # p-value: fraction of surrogates with at least as many coincidences as observed

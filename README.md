@@ -43,9 +43,9 @@ Each numbered folder is one step of the analysis and they are run in order (see 
 
 ## The steps
 
-- **Bursts of each chamber** (`common/bursts.py`, used by all the steps). The activity of each
-  chamber is the fraction of its active ROIs that fire within 0.5 s; a burst is an episode above
-  0.1, and its time is the time of its peak.
+- **Chamber bursts** (`common/bursts.py`, used by all the steps). The chamber GNA is the
+  fraction of the active ROIs of each chamber that fire within 0.5 s; a chamber burst is an
+  episode in which it exceeds 0.1, and its time is the time of its peak.
 - **2 – Screening.** Excludes the recordings made after DIV 24, those without bursts in one of
   the chambers, and two faulty recordings (20_04 DIV 7: wrong frame rate; 30_04_1 DIV 11:
   abnormal activity).
@@ -55,7 +55,8 @@ Each numbered folder is one step of the analysis and they are run in order (see 
 - **4 – Culture selection.** Keeps the cultures whose chambers have more coincident bursts than
   expected by chance (p < 0.05).
 - **6 – Directionality.** Bursts of the two chambers closer than 1 s are one propagation, and the
-  chamber that peaks first is its origin (S->T or T->S); bursts without a partner are local.
+  chamber that peaks first is its origin (S->T or T->S); if both peak at the same time step the
+  propagation is simultaneous and has no direction; bursts without a partner are local.
   The counts of each culture give the directionality index, the recruitment score and a binomial
   test.
 - **7 – Example culture.** The same analysis for one recording, plus the initiation site of

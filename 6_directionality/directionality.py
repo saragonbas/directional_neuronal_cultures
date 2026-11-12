@@ -19,6 +19,8 @@ Measures (for every recording, Delta t = 1 s)
 --------
     n(S->T), n(T->S)   bursts that propagated source->target and target->source
     n(local,S/T)       bursts of each chamber that did not propagate
+    n(simultaneous)    coincident bursts in which both chambers peaked in the same
+                       time step: they have no direction and are not used in DI or R
 
     Directionality index   DI   = [n(S->T) - n(T->S)] / [n(S->T) + n(T->S)]
     Recruitment score      R(S) = n(S->T) / [n(S->T) + n(local,S)]
@@ -85,12 +87,15 @@ def count_recording(path, source_chamber):
     with chamber A/B translated into source (S) / target (T).
     """
     data = bursts.detect_chamber_bursts(path)
-    A_to_B, B_to_A, local_A, local_B = bursts.match_bursts(
+    A_to_B, B_to_A, local_A, local_B, simultaneous = bursts.match_bursts(
         data["bursts_A"], data["bursts_B"], COINCIDENCE_WINDOW)
 
     if source_chamber == "A":
-        return {"S_to_T": A_to_B, "T_to_S": B_to_A, "local_S": local_A, "local_T": local_B}
-    return {"S_to_T": B_to_A, "T_to_S": A_to_B, "local_S": local_B, "local_T": local_A}
+        counts = {"S_to_T": A_to_B, "T_to_S": B_to_A, "local_S": local_A, "local_T": local_B}
+    else:
+        counts = {"S_to_T": B_to_A, "T_to_S": A_to_B, "local_S": local_B, "local_T": local_A}
+    counts["simultaneous"] = simultaneous
+    return counts
 
 
 def count_all_recordings():
@@ -187,7 +192,7 @@ def plot_propagations_per_culture(per_culture):
     ax.set_xticklabels([CULTURE_LABELS[c] for c in table["culture"]])
     ax.set_xlabel("Culture")
     ax.set_xlim(-0.6, len(table) - 0.4)
-    ax.set_ylim(0, table["S_to_T"].max() * 1.15)
+    ax.set_ylim(0, table["S_to_T"].max() * 2.1)   # room for the stars, the legend and the title
     ax.set_ylabel("Propagations")
     ax.legend(frameon=False, loc="upper right", bbox_to_anchor=(1, 0.84))
     # --- Period used (all recordings), as in the recruitment score figure ---
@@ -240,10 +245,17 @@ def plot_time_course(per_stage):
     # --- No preference ---
     ax.axhline(0, color="0.5", ls="--", lw=1.5, zorder=0)
 
-    # --- Individual cultures: grey dots, at the same position as the mean ---
+    # --- Individual cultures: grey dots at the position of the mean; dots that would overlap
+    #     (with each other or with the mean) are moved slightly to the sides ---
     for xi, stage in zip(x, stages):
-        values = table[stage].dropna()
-        ax.plot(np.full(len(values), xi), values, "o", color=plot_style.CULTURE_COLOUR, ms=8, zorder=1)
+        values = table[stage].dropna().sort_values().to_numpy()
+        positions = np.full(len(values), float(xi))
+        close = [np.sum(np.abs(values - v) < 0.06) > 1 or abs(v - values.mean()) < 0.06 for v in values]
+        side = -1
+        for k in np.where(close)[0]:
+            positions[k] = xi + side * 0.09
+            side = -side
+        ax.plot(positions, values, "o", color=plot_style.CULTURE_COLOUR, ms=8, zorder=1)
 
     # --- Mean and standard error over cultures ---
     mean = table.mean(axis=0)
@@ -266,7 +278,7 @@ def plot_time_course(per_stage):
 # =============================================================================
 
 def main():
-    counts = ["S_to_T", "T_to_S", "local_S", "local_T"]
+    counts = ["S_to_T", "T_to_S", "local_S", "local_T", "simultaneous"]
 
     # --- Counts per recording ---
     per_recording = add_measures(count_all_recordings())
@@ -301,7 +313,8 @@ def main():
     total = per_culture[counts].sum()
     print(per_culture[["label", "culture"] + counts + ["DI", "p_binomial"]].round(3).to_string(index=False))
     print(f"\nAll cultures pooled: {total['S_to_T']} S->T vs {total['T_to_S']} T->S "
-          f"({100 * total['S_to_T'] / (total['S_to_T'] + total['T_to_S']):.0f}% source->target)")
+          f"({100 * total['S_to_T'] / (total['S_to_T'] + total['T_to_S']):.0f}% source->target); "
+          f"{total['simultaneous']} simultaneous (no direction)")
     significant = per_culture[(per_culture["p_binomial"] < 0.05) & (per_culture["DI"] > 0)]
     print(f"Cultures with a significant S->T bias (binomial p < 0.05): {len(significant)} of {len(per_culture)} "
           f"(largest p = {significant['p_binomial'].max():.3f})")
@@ -313,7 +326,7 @@ def main():
     print("\nDI per stage (cultures with >= %d propagations):" % MIN_PROPAGATIONS)
     shown = per_stage[per_stage["n_propagations"] >= MIN_PROPAGATIONS]
     order = [stage_of(low) for low, _ in STAGES]
-    print(shown.groupby("stage")["DI"].agg(["count", "mean"]).reindex(order).round(2).to_string())
+    print(shown.groupby("stage")["DI"].agg(["count", "mean", "sem"]).reindex(order).round(2).to_string())
 
 
 if __name__ == "__main__":

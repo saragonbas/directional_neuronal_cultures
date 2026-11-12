@@ -56,7 +56,7 @@ IBI_PAIR = (0, 1)      # the IBI arrow is drawn between these two bursts
 # Text sizes and figure shape (width / height of the final image)
 LABEL_SIZE, TICK_SIZE, IBI_SIZE = 30, 24, 26
 AXIS_WIDTH, TICK_LENGTH = 1.8, 7
-ASPECT = 1.5
+ASPECT = 1.6
 
 
 # =============================================================================
@@ -108,11 +108,11 @@ def detect_bursts(t, gna, threshold, merge_gap):
 
 def plot(ids, times, t, gna, bursts):
     plt.rcParams.update({"font.family": "sans-serif"})
-    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(8.6, 7.5), sharex=True,
+    fig, (ax_r, ax_g) = plt.subplots(2, 1, figsize=(9.2, 7.5), sharex=True,
                                      gridspec_kw=dict(height_ratios=[3, 1.2], hspace=0.20))
 
     # --- Raster (ROI 1 at the top, as in the image of the culture) ---
-    ax_r.scatter(times, ids, s=1.4, c="#1f2a44", marker="|", linewidths=0.6)
+    ax_r.scatter(times, ids, s=2.5, c="black", marker="o", linewidths=0)
     ax_r.set_ylabel("ROI", fontsize=LABEL_SIZE)
     ax_r.set_ylim(405, 0)
     ax_r.set_yticks([0, 100, 200, 300, 400])
